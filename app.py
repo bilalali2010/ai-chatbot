@@ -1,4 +1,6 @@
 import streamlit as st
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import requests
 import json
 
@@ -9,107 +11,170 @@ st.set_page_config(
     layout="wide"
 )
 
-# Hugging Face configuration
-@st.cache_data
-def get_huggingface_models():
-    return {
-        "Microsoft DialoGPT": "microsoft/DialoGPT-large",
-        "Google FLAN-T5": "google/flan-t5-xxl",
-        "Facebook Blenderbot": "facebook/blenderbot-400M-distill",
-        "GPT-2": "gpt2"
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 3rem;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 2rem;
     }
+    .chat-message {
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-message.user {
+        background-color: #2b3137;
+        color: white;
+        margin-left: 20%;
+    }
+    .chat-message.assistant {
+        background-color: #f0f2f6;
+        margin-right: 20%;
+    }
+    .chat-input {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        background: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+</style>
+""", unsafe_allow_html=True)
 
-def query_huggingface(prompt: str, model: str, conversation_history: list = None):
-    API_URL = f"https://api-inference.huggingface.co/models/{model}"
-    
-    # For models that need API token (free account)
-    headers = {
-        "Authorization": f"Bearer {st.secrets.get('HF_API_KEY', '')}",
-        "Content-Type": "application/json"
-    }
-    
-    # Format prompt based on model type
-    if "dialo" in model.lower():
-        # For conversational models
-        inputs = prompt
-    else:
-        # For text generation models
-        inputs = f"Conversation:\n{''.join([f'User: {msg["content"]}\nAI: ' if msg['role'] == 'user' else f'{msg["content"]}\n' for msg in conversation_history[-4:]])}User: {prompt}\nAI:"
-    
-    payload = {
-        "inputs": inputs,
-        "parameters": {
-            "max_new_tokens": 250,
-            "temperature": 0.7,
-            "do_sample": True
-        },
-        "options": {
-            "wait_for_model": True
-        }
-    }
-    
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if isinstance(result, list) and len(result) > 0:
-                return result[0].get('generated_text', 'No response generated')
-            else:
-                return str(result)
-        else:
-            return f"Model is loading... Please try again in 30 seconds. (Status: {response.status_code})"
-            
-    except Exception as e:
-        return f"Error: {str(e)}"
+# Initialize session state for chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Sidebar configuration
+# Title
+st.markdown('<h1 class="main-header">🤖 Free AI Chatbot</h1>', unsafe_allow_html=True)
+
+# Sidebar for configuration
 with st.sidebar:
-    st.title("🤖 Chatbot Settings")
+    st.header("⚙️ Configuration")
     
-    models = get_huggingface_models()
-    selected_model = st.selectbox(
-        "Choose Model",
-        list(models.keys())
+    model_choice = st.selectbox(
+        "Choose AI Model:",
+        ["DialoGPT-Medium", "HuggingFace API", "GPT-2"]
     )
     
-    st.markdown("---")
-    st.markdown("**Note:** Some models may take 20-30 seconds to load initially")
+    temperature = st.slider("Temperature:", 0.1, 1.0, 0.7)
+    max_length = st.slider("Max Response Length:", 50, 500, 150)
     
     if st.button("Clear Chat History"):
         st.session_state.messages = []
         st.rerun()
 
-# Main chat interface
-st.title("💬 Free AI Chatbot")
-st.markdown("Powered by Hugging Face • 100% Free")
+# Chat history display
+chat_container = st.container()
 
-# Initialize chat history
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! I'm your AI assistant. How can I help you today?"}
-    ]
+with chat_container:
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-# Display chat messages
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# AI Model Functions
+def load_dialogpt_model():
+    """Load DialoGPT model - runs locally"""
+    if "dialogpt_model" not in st.session_state:
+        with st.spinner("Loading AI model... This may take a minute."):
+            tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
+            model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
+            st.session_state.dialogpt_model = (tokenizer, model)
+    return st.session_state.dialogpt_model
+
+def get_dialogpt_response(user_input, chat_history_ids=None):
+    """Get response from DialoGPT model"""
+    try:
+        tokenizer, model = load_dialogpt_model()
+        
+        # Encode the user input
+        new_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
+        
+        # Generate response
+        bot_input_ids = new_input_ids if chat_history_ids is None else torch.cat([chat_history_ids, new_input_ids], dim=-1)
+        
+        chat_history_ids = model.generate(
+            bot_input_ids,
+            max_length=max_length + bot_input_ids.shape[-1],
+            pad_token_id=tokenizer.eos_token_id,
+            temperature=temperature,
+            do_sample=True,
+            top_p=0.9,
+            no_repeat_ngram_size=3
+        )
+        
+        # Decode response
+        response = tokenizer.decode(
+            chat_history_ids[:, bot_input_ids.shape[-1]:][0], 
+            skip_special_tokens=True
+        )
+        
+        return response, chat_history_ids
+        
+    except Exception as e:
+        return f"I encountered an error: {str(e)}", None
+
+def get_huggingface_response(user_input):
+    """Get response from Hugging Face Inference API"""
+    try:
+        API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
+        headers = {"Authorization": f"Bearer {st.secrets.get('HF_TOKEN', '')}"}
+        
+        payload = {
+            "inputs": user_input,
+            "parameters": {
+                "max_length": max_length,
+                "temperature": temperature,
+                "do_sample": True
+            }
+        }
+        
+        response = requests.post(API_URL, headers=headers, json=payload)
+        
+        if response.status_code == 200:
+            return response.json()[0]['generated_text']
+        else:
+            return "I'm having trouble connecting right now. Please try again."
+            
+    except Exception as e:
+        return f"API Error: {str(e)}"
 
 # Chat input
 if prompt := st.chat_input("Type your message here..."):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    # Display user message
     with st.chat_message("user"):
         st.markdown(prompt)
     
     # Generate AI response
     with st.chat_message("assistant"):
-        with st.spinner("🤔 Thinking..."):
-            model_id = models[selected_model]
-            response = query_huggingface(
-                prompt, 
-                model_id,
-                st.session_state.messages
-            )
+        with st.spinner("Thinking..."):
+            if model_choice == "DialoGPT-Medium":
+                response, _ = get_dialogpt_response(prompt)
+            elif model_choice == "HuggingFace API":
+                response = get_huggingface_response(prompt)
+            else:
+                response = "Please select a valid AI model."
+            
             st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    # Add assistant response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": response})
+
+# Footer
+st.markdown("---")
+st.markdown(
+    "Powered by Streamlit 🤖 | Models: DialoGPT • HuggingFace | "
+    "**Completely Free AI Chatbot**"
+)
