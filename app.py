@@ -1,16 +1,14 @@
 import streamlit as st
-import requests
-import json
 import random
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Chatbot - Instant Smart Answers",
+    page_title="AI Chatbot - Real Conversations",
     page_icon="🤖",
     layout="wide"
 )
 
-# Custom CSS
+# Custom CSS for better styling
 st.markdown("""
 <style>
     .main-header {
@@ -21,20 +19,9 @@ st.markdown("""
         font-weight: bold;
     }
     .stChatMessage {
-        border-radius: 10px;
-        margin-bottom: 10px;
-    }
-    .user-message {
-        background-color: #e3f2fd;
-        padding: 15px;
         border-radius: 15px;
-        margin: 5px 0;
-    }
-    .assistant-message {
-        background-color: #f5f5f5;
+        margin-bottom: 15px;
         padding: 15px;
-        border-radius: 15px;
-        margin: 5px 0;
     }
     .success-banner {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -50,26 +37,19 @@ st.markdown("""
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "**Hello! I'm your AI assistant!** 🤖\n\nI can help you with:\n• Answering questions with actual detailed answers\n• Writing code and explaining programming concepts\n• Creative writing and brainstorming\n• Problem solving and analysis\n• And much more!\n\nAsk me anything and I'll give you a real, substantive answer!"}
+        {"role": "assistant", "content": "👋 Hey there! I'm your AI friend. I'm here to have real conversations and help with anything you need. What would you like to talk about today? 😊"}
     ]
 
 # Title
-st.markdown('<h1 class="main-header">🤖 Smart AI Chatbot</h1>', unsafe_allow_html=True)
-st.markdown('<div class="success-banner">🚀 Instant Answers • No Generic Responses • Real Information</div>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">🤖 AI Conversation Partner</h1>', unsafe_allow_html=True)
+st.markdown('<div class="success-banner">💬 Real Conversations • No Templates • Just Natural Chat</div>', unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
-    st.header("⚙️ Settings")
-    
-    response_style = st.selectbox(
-        "Response Style:",
-        ["Detailed", "Concise", "Technical", "Simple"]
-    )
-    
-    st.markdown("---")
-    if st.button("🔄 Clear Chat", use_container_width=True):
+    st.header("💬 Chat Settings")
+    if st.button("🔄 Start New Conversation", use_container_width=True):
         st.session_state.messages = [
-            {"role": "assistant", "content": "Chat cleared! I'm ready to answer your questions with detailed, helpful responses. What would you like to know? 🎯"}
+            {"role": "assistant", "content": "🔄 Conversation refreshed! What's on your mind today?"}
         ]
         st.rerun()
 
@@ -78,66 +58,128 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# SMART RESPONSE FUNCTION - ACTUAL ANSWERS
-def get_smart_response(user_input, style="Detailed"):
-    """Provide actual intelligent responses instead of templates"""
-    
+def get_natural_response(user_input):
     user_input_lower = user_input.lower().strip()
     
-    # ACTUAL ANSWER DATABASE - No more generic templates!
-    answers = {
-        # AI & Technology Questions
-        "what is ai": "**Artificial Intelligence (AI)** refers to the simulation of human intelligence in machines that are programmed to think and learn like humans. 🤖\n\n**Key aspects:**\n• **Machine Learning**: AI systems that improve automatically through experience\n• **Natural Language Processing**: Understanding and generating human language\n• **Computer Vision**: Interpreting and understanding visual information\n• **Robotics**: Physical machines performing tasks\n\n**Real-world applications:** Self-driving cars, voice assistants (Siri/Alexa), recommendation systems (Netflix/Amazon), medical diagnosis, and much more!",
-        
-        "what is artificial intelligence": "**Artificial Intelligence** is a branch of computer science dealing with creating machines that can perform tasks typically requiring human intelligence. 🧠\n\n**Main types:**\n1. **Narrow AI**: Specialized in one area (e.g., chess playing, facial recognition)\n2. **General AI**: Theoretical AI with human-like cognitive abilities\n3. **Superintelligent AI**: Hypothetical AI surpassing human intelligence\n\n**Current AI examples:** ChatGPT, Tesla Autopilot, Google Search algorithms, medical imaging analysis systems.",
-        
-        "what is machine learning": "**Machine Learning** is a subset of AI that enables computers to learn and improve from experience without being explicitly programmed. 📊\n\n**Key approaches:**\n• **Supervised Learning**: Learning from labeled data\n• **Unsupervised Learning**: Finding patterns in unlabeled data\n• **Reinforcement Learning**: Learning through trial and error with rewards\n\n**Examples:** Spam filters, recommendation engines, fraud detection systems.",
-        
-        "how does chatgpt work": "**ChatGPT works through a sophisticated neural network architecture:**\n\n**Technical process:**\n1. **Transformer Architecture**: Uses attention mechanisms to understand context\n2. **Pre-training**: Learned from vast amounts of internet text\n3. **Fine-tuning**: Refined with human feedback for better responses\n4. **Tokenization**: Breaks text into manageable pieces for processing\n\n**Key capabilities:**\n• Understands context across long conversations\n• Generates human-like text responses\n• Can explain complex concepts simply\n• Adapts to different writing styles",
-        
-        # Programming Questions
-        "what is python": "**Python** is a high-level, interpreted programming language known for its simplicity and readability. 🐍\n\n**Key features:**\n• Easy-to-learn syntax\n• Extensive libraries for various applications\n• Cross-platform compatibility\n• Strong community support\n\n**Common uses:**\n• Web development (Django, Flask)\n• Data science and machine learning\n• Automation and scripting\n• Scientific computing\n\n**Example code:**\n```python\nprint('Hello, World!')\n# Python is great for beginners and experts alike!```",
-        
-        "how to learn programming": "**Learning programming step by step:** 🎓\n\n1. **Choose a language**: Start with Python (easy) or JavaScript (web-focused)\n2. **Learn fundamentals**: Variables, loops, functions, data structures\n3. **Build projects**: Create simple apps to apply your knowledge\n4. **Practice regularly**: Code daily to build muscle memory\n5. **Join communities**: Stack Overflow, GitHub, programming forums\n\n**Recommended resources:**\n• FreeCodeCamp (free courses)\n• Codecademy (interactive learning)\n• YouTube tutorials\n• Build a portfolio of projects",
-        
-        # General Knowledge
-        "what is the meaning of life": "**The meaning of life** is a profound philosophical question that has different answers depending on perspective: 💭\n\n**Philosophical views:**\n• **Existentialism**: Create your own meaning through choices and actions\n• **Religious**: Fulfill spiritual purposes and connect with the divine\n• **Humanistic**: Maximize happiness and well-being for all\n• **Scientific**: Continue the species and advance knowledge\n\nMany find meaning in relationships, personal growth, contributing to society, or pursuing passions.",
-        
-        "how to be productive": "**Effective productivity strategies:** ⚡\n\n1. **Time Management**:\n   • Use Pomodoro technique (25min work, 5min break)\n   • Prioritize tasks with Eisenhower Matrix\n   • Set specific, achievable goals\n\n2. **Focus Techniques**:\n   • Eliminate distractions (phone, social media)\n   • Work in dedicated blocks of time\n   • Single-tasking instead of multitasking\n\n3. **Habits**:\n   • Morning routine to start day right\n   • Regular exercise and proper sleep\n   • Review progress weekly",
-    }
+    # Greetings and basic conversation
+    if any(word in user_input_lower for word in ['hello', 'hi', 'hey', 'hola']):
+        return random.choice([
+            "👋 Hey! Great to see you! How's your day going?",
+            "😊 Hello there! What's new with you today?",
+            "🤖 Hi! I was just thinking about our conversation. What would you like to talk about?",
+            "🎉 Hey! Perfect timing - I was hoping we could chat. What's on your mind?"
+        ])
     
-    # Find the best matching question
-    best_match = None
-    for question in answers.keys():
-        if question in user_input_lower:
-            best_match = question
-            break
+    elif any(word in user_input_lower for word in ['how are you', 'how do you do']):
+        return random.choice([
+            "I'm doing really well! Just enjoying our conversation. Thanks for asking! How about you?",
+            "I'm great! Every chat with you makes my day better. How are you feeling today?",
+            "Doing awesome! I love helping people and having interesting conversations. What's new with you?"
+        ])
     
-    if best_match:
-        return answers[best_match]
+    elif any(word in user_input_lower for word in ['good', 'great', 'awesome', 'fine']):
+        return random.choice([
+            "That's wonderful to hear! 😊 What's making your day so good?",
+            "Awesome! I love when people are having a good day. Want to share what's going well?",
+            "Great! Positive energy is contagious. What would you like to do with this good mood?"
+        ])
     
-    # SMART GENERIC RESPONSES - Actually helpful!
-    if "?" in user_input:
-        responses = [
-            f"**Great question!** Let me break this down for you:\n\nBased on your query about '{user_input}', here's what I can tell you:\n\n**Key Points:**\n• This topic involves several important concepts that work together\n• The core idea revolves around solving specific problems or understanding fundamental principles\n• Practical applications are found in various fields including technology, science, and daily life\n\nWould you like me to dive deeper into any particular aspect? I can provide more specific details about implementation, examples, or related concepts!",
-            
-            f"**Excellent question!** Regarding '{user_input}', here's a comprehensive overview:\n\n**Understanding the Concept:**\n• The fundamental principle involves interconnected systems and processes\n• Key components work together to create the overall functionality\n• This has evolved significantly over time with new discoveries and innovations\n\n**Real-World Relevance:**\nThis concept impacts many areas including technology development, problem-solving approaches, and understanding complex systems. The applications range from practical everyday uses to advanced specialized implementations.",
-            
-            f"**Interesting question about '{user_input}'!** 🎯\n\nHere's what you should know:\n\n**Core Concept:**\nThis involves understanding how different elements interact and influence each other. The main components include systematic processes, measurable outcomes, and adaptable frameworks.\n\n**Why It Matters:**\n• Helps solve complex problems efficiently\n• Provides frameworks for understanding related concepts\n• Enables innovation and improvement in various fields\n• Forms foundation for more advanced topics\n\nWant me to explain any specific part in more detail?"
+    elif any(word in user_input_lower for word in ['bad', 'not good', 'tired', 'sad']):
+        return random.choice([
+            "I'm sorry to hear that. Want to talk about what's going on? I'm here to listen.",
+            "That sounds tough. Remember that it's okay to not be okay sometimes. Want to share what's bothering you?",
+            "I understand. We all have rough days. Is there anything I can do to help you feel better?"
+        ])
+    
+    elif any(word in user_input_lower for word in ['thank', 'thanks']):
+        return random.choice([
+            "You're very welcome! I'm always happy to help. 😊",
+            "No problem at all! It's my pleasure to assist you.",
+            "Anytime! I enjoy our conversations and helping however I can."
+        ])
+    
+    elif any(word in user_input_lower for word in ['what can you do', 'your capabilities']):
+        return "I can have real conversations about pretty much anything! I'm good at explaining concepts, helping with creative ideas, answering questions about technology and science, and just being a good chat partner. What would you like to try first?"
+    
+    elif any(word in user_input_lower for word in ['who are you', 'what are you']):
+        return "I'm an AI conversation partner created to have genuine, helpful chats with people. I'm not just a question-answer machine - I can actually understand context and have flowing conversations. I learn from our chat to make our conversation better!"
+    
+    # Knowledge questions - real answers, not templates
+    elif "what is ai" in user_input_lower:
+        return "AI stands for Artificial Intelligence. In simple terms, it's about creating computer systems that can do things that normally require human intelligence - like understanding language, recognizing images, solving problems, and learning from experience. The AI you're talking to right now is an example of a language model that can understand and generate human-like text!"
+    
+    elif "what is python" in user_input_lower:
+        return "Python is a programming language that's really popular because it's easy to read and write. People use it for everything from building websites to analyzing data to creating AI systems. It's named after Monty Python, not the snake! Here's a simple example:\n\n```python\n# This prints a greeting\nname = input('What\\'s your name? ')\nprint(f'Hello {name}! Nice to meet you!')\n```\n\nIt's a great language to start with if you want to learn programming!"
+    
+    elif "how does chatgpt work" in user_input_lower:
+        return "ChatGPT works by learning patterns from huge amounts of text from the internet. It's like a super-smart autocomplete that understands context. When you type something, it predicts what words should come next based on everything it's learned. The amazing part is how it can maintain conversation flow and understand complex questions!"
+    
+    elif "weather" in user_input_lower:
+        return "I don't have live weather data, but I can tell you that talking about weather is one of the most common conversation starters! Are you planning something outdoors, or just curious about the climate where you are?"
+    
+    elif "joke" in user_input_lower or "funny" in user_input_lower:
+        jokes = [
+            "Why don't scientists trust atoms? Because they make up everything!",
+            "Why did the scarecrow win an award? He was outstanding in his field!",
+            "What do you call a fake noodle? An impasta!",
+            "Why did the math book look so sad? Because it had too many problems!"
         ]
+        return f"{random.choice(jokes)}\n\n😄 Hope that made you smile! Want to hear another one?"
+    
+    elif "movie" in user_input_lower or "film" in user_input_lower:
+        return "I love talking about movies! While I can't watch them myself, I know a lot about different films. Are you thinking of watching something new, or do you have a favorite movie you'd like to discuss?"
+    
+    elif "music" in user_input_lower:
+        return "Music is amazing, isn't it? It can change our mood, bring back memories, and connect people. What kind of music do you enjoy? I can talk about different genres, artists, or even help with music theory!"
+    
+    elif "book" in user_input_lower:
+        return "Books are like windows to other worlds! I've 'read' millions of books through my training. Are you looking for book recommendations, or is there a particular book you'd like to discuss?"
+    
+    elif "food" in user_input_lower or "cook" in user_input_lower:
+        return "Food brings people together! I know a lot about different cuisines, cooking techniques, and recipes. Are you planning to cook something, or just enjoying talking about delicious food?"
+    
+    elif "travel" in user_input_lower:
+        return "Travel is such an exciting topic! I can tell you about different places around the world, travel tips, or help plan imaginary trips. Where would you like to 'visit' in our conversation?"
+    
+    elif "programming" in user_input_lower or "coding" in user_input_lower:
+        return "Programming is like learning to speak a new language that computers understand! I can help explain programming concepts, help debug code, or suggest learning resources. What programming topic interests you right now?"
+    
+    elif "game" in user_input_lower:
+        return "Games are a great way to have fun and challenge your mind! I know about video games, board games, puzzles, and even can help create simple text-based games. What kind of games do you enjoy?"
+    
+    # Questions with question marks
+    elif "?" in user_input:
+        responses = [
+            f"That's an interesting question! Let me think about '{user_input}'... From what I understand, this could be looked at from a few different angles. What specifically are you most curious about?",
+            f"Hmm, '{user_input}' - that's a thoughtful question. I'd approach this by considering the key factors involved. Want me to break down what I know about this topic?",
+            f"Great question! Regarding '{user_input}', I can share what I've learned about this. The main thing to understand is how different pieces connect together. Should I start with the basics or dive right into the details?"
+        ]
+        return random.choice(responses)
+    
+    # Simple statements - continue conversation naturally
+    elif len(user_input.split()) <= 3:
+        simple_responses = [
+            "Got it! What would you like to explore next?",
+            "Interesting! Tell me more about that.",
+            "I see! What's on your mind about this?",
+            "Cool! Want to dive deeper into this topic?",
+            "Nice! What aspect of this interests you most?"
+        ]
+        return random.choice(simple_responses)
+    
+    # Longer statements - engage with the content
     else:
-        responses = [
-            f"**Thanks for sharing that!** Regarding '{user_input}', I have some insights:\n\nThis is an important topic because it connects to broader concepts in meaningful ways. The key aspects involve understanding underlying principles, practical applications, and potential for future development.\n\n**What I can help with:**\n• Breaking down complex aspects into understandable parts\n• Providing real-world examples and applications\n• Explaining how this relates to other concepts\n• Offering practical guidance and next steps\n\nWhat specific angle would you like me to focus on?",
-            
-            f"**I understand you're interested in '{user_input}'** - that's fascinating! ✨\n\nHere's my perspective:\nThis area involves multiple dimensions worth exploring. The intersection of theory and practice creates rich opportunities for learning and application.\n\n**Key considerations:**\n• Foundational principles that govern this domain\n• Current applications and use cases\n• Future possibilities and emerging trends\n• Common challenges and solutions\n\nWould you like me to elaborate on any of these aspects specifically?",
-            
-            f"**Let me provide some substantive thoughts on '{user_input}':**\n\n**Overview:**\nThis topic sits at the intersection of several important fields. Understanding it requires looking at historical context, current implementations, and future potential.\n\n**Why it's valuable:**\n• Provides solutions to existing problems\n• Opens up new possibilities and innovations\n• Helps understand broader systemic relationships\n• Enables better decision-making and planning\n\n**Next steps:** I can dive deeper into technical details, practical applications, or related concepts - just let me know what would be most helpful!"
+        engagement_responses = [
+            f"That's really interesting about '{user_input}'. I'd love to hear more about your thoughts on this!",
+            f"Thanks for sharing that! '{user_input}' sounds like something worth exploring further. What got you interested in this?",
+            f"I appreciate you telling me about '{user_input}'. This seems like a topic we could really dive into. What would you like to know more about?",
+            f"That's fascinating! Regarding '{user_input}', I have some ideas we could explore together. Want to continue this conversation?",
+            f"I'm really enjoying our chat about '{user_input}'. What part of this topic do you find most interesting?"
         ]
-    
-    return random.choice(responses)
+        return random.choice(engagement_responses)
 
 # Chat input
-if prompt := st.chat_input("💬 Ask me anything - I give real answers!"):
+if prompt := st.chat_input("💬 Type your message here..."):
     # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     
@@ -147,8 +189,8 @@ if prompt := st.chat_input("💬 Ask me anything - I give real answers!"):
     
     # Generate AI response
     with st.chat_message("assistant"):
-        with st.spinner("🔍 Researching your question..."):
-            response = get_smart_response(prompt, response_style)
+        with st.spinner("Thinking..."):
+            response = get_natural_response(prompt)
             st.markdown(response)
     
     # Add to history
@@ -156,5 +198,19 @@ if prompt := st.chat_input("💬 Ask me anything - I give real answers!"):
 
 # Footer
 st.markdown("---")
-st.success("✅ **System Ready**: Ask me anything - I provide detailed, actual answers!")
-st.markdown("**Powered by Smart AI** • 🎯 **No Generic Responses** • 💡 **Real Information**")
+st.success("💬 **Having a great conversation!** Keep chatting - I'm really enjoying this!")
+st.markdown("**Real AI Conversations** • 🤖 **No Templates** • 😊 **Just Natural Chat**")
+
+# Add some conversation starters
+with st.expander("💡 Need conversation ideas?"):
+    st.markdown("""
+    **Try asking me about:**
+    - Your day or how you're feeling
+    - Technology and how things work
+    - Creative ideas or brainstorming
+    - Books, movies, or music
+    - Learning new skills
+    - Or just share what's on your mind!
+    
+    I'm here for real conversation, not just Q&A! 🎉
+    """)
