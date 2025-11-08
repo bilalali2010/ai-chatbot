@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🤖 AI Chatbot")
-st.markdown("Chat with various AI models")
+st.markdown("Chat with various AI models powered by Hugging Face")
 
 # -------------------------
 # SIDEBAR CONFIGURATION
@@ -20,26 +20,39 @@ st.markdown("Chat with various AI models")
 with st.sidebar:
     st.header("⚙️ Configuration")
     
-    # Models that work well with text generation
+    # Use FREE and accessible models
     MODEL_OPTIONS = {
-        "Mistral 7B": "mistralai/Mistral-7B-Instruct-v0.3",
-        "Zephyr 7B": "HuggingFaceH4/zephyr-7b-beta",
-        "Llama 3 8B": "meta-llama/Meta-Llama-3-8B-Instruct",
+        "Mistral 7B Instruct": "mistralai/Mistral-7B-Instruct-v0.3",
+        "Zephyr 7B Beta": "HuggingFaceH4/zephyr-7b-beta",
+        "OpenHermes 2.5": "teknium/OpenHermes-2.5-Mistral-7B",
+        "Microsoft Phi-3 Mini": "microsoft/Phi-3-mini-4k-instruct"
     }
     
-    selected_model = st.selectbox("Choose Model:", list(MODEL_OPTIONS.keys()))
+    selected_model = st.selectbox(
+        "Choose Model:",
+        list(MODEL_OPTIONS.keys()),
+        index=0
+    )
     MODEL_ID = MODEL_OPTIONS[selected_model]
     
-    max_tokens = st.slider("Max Tokens", 50, 1000, 512)
-    temperature = st.slider("Temperature", 0.1, 1.0, 0.7)
+    st.divider()
+    st.subheader("Model Parameters")
+    max_tokens = st.slider("Max Tokens", 50, 1000, 512, 50)
+    temperature = st.slider("Temperature", 0.1, 1.0, 0.7, 0.1)
+    
+    st.divider()
+    if st.button("🗑️ Clear Chat History", use_container_width=True):
+        st.session_state["messages"] = []
+        st.rerun()
 
 # -------------------------
-# TEXT GENERATION CLIENT
+# HUGGING FACE CLIENT - FIXED VERSION
 # -------------------------
 @st.cache_resource
 def get_client():
     try:
         HF_TOKEN = st.secrets["HF_TOKEN"]
+        # Initialize without specific model for chat completion
         return InferenceClient(token=HF_TOKEN)
     except Exception as e:
         st.error(f"❌ Failed to initialize client: {e}")
@@ -51,66 +64,64 @@ client = get_client()
 # CHAT MEMORY
 # -------------------------
 if "messages" not in st.session_state:
-    st.session_state["messages = []
+    st.session_state["messages"] = []  # FIXED: Added missing quote and bracket
 
-# Display chat
+# Display previous messages
 for msg in st.session_state["messages"]:
-    with st.chat_message(msg["role"]):
+    avatar = "🤖" if msg["role"] == "assistant" else "👤"
+    with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
 
 # -------------------------
-# TEXT GENERATION APPROACH
+# USER INPUT & RESPONSE
 # -------------------------
-def generate_response(messages, model_id, max_tokens=512, temperature=0.7):
-    """Generate response using text generation"""
-    # Format conversation for the model
-    conversation = ""
-    for msg in messages:
-        if msg["role"] == "user":
-            conversation += f"<|user|>\n{msg['content']}</s>\n"
-        elif msg["role"] == "assistant":
-            conversation += f"<|assistant|>\n{msg['content']}</s>\n"
-    
-    # Add the current prompt
-    conversation += "<|assistant|>\n"
-    
-    # Generate response
-    response = client.text_generation(
-        prompt=conversation,
-        model=model_id,
-        max_new_tokens=max_tokens,
-        temperature=temperature,
-        stream=False
-    )
-    
-    return response.strip()
-
 user_input = st.chat_input("Type your message here...")
 
-if user_input:
-    # Add user message
-    st.session_state["messages"].append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
+if user_input and user_input.strip():
+    # Add user message to history
+    st.session_state["messages"].append({"role": "user", "content": user_input.strip()})
+    
+    with st.chat_message("user", avatar="👤"):
         st.markdown(user_input)
     
-    # Generate response
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        message_placeholder.markdown("⏳ Thinking...")
-        
-        try:
-            # Try text generation approach
-            response = generate_response(
-                st.session_state["messages"],
-                MODEL_ID,
-                max_tokens,
-                temperature
-            )
+    # Get AI response
+    if client is not None:
+        with st.chat_message("assistant", avatar="🤖"):
+            message_placeholder = st.empty()
+            message_placeholder.markdown("⏳ Thinking...")
             
-            message_placeholder.markdown(response)
-            st.session_state["messages"].append({"role": "assistant", "content": response})
-            
-        except Exception as e:
-            error_msg = f"❌ Error: {str(e)}"
-            message_placeholder.markdown(error_msg)
-            st.session_state["messages"].append({"role": "assistant", "content": error_msg})
+            try:
+                # Prepare messages for the model
+                messages = [{"role": m["role"], "content": m["content"]} 
+                           for m in st.session_state["messages"]]
+                
+                # Generate response with explicit model parameter
+                completion = client.chat_completion(
+                    model=MODEL_ID,  # Explicitly specify model here
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=False
+                )
+                
+                response = completion.choices[0].message["content"]
+                
+                # Stream the response for better UX
+                full_response = ""
+                message_placeholder.markdown("🔄 Generating response...")
+                
+                for chunk in response.split():
+                    full_response += chunk + " "
+                    time.sleep(0.02)
+                    message_placeholder.markdown(full_response + "▌")
+                
+                message_placeholder.markdown(full_response)
+                
+                # Add AI response to history
+                st.session_state["messages"].append({"role": "assistant", "content": full_response.strip()})
+                
+            except Exception as e:
+                error_msg = f"❌ Error: {str(e)}"
+                st.error(f"Detailed error: {e}")
+                message_placeholder.markdown(error_msg)
+                st.session_state["messages"].append({"role": "assistant", "content": error_msg})
