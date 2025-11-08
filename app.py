@@ -1,75 +1,115 @@
 import streamlit as st
 import requests
-import time
+import json
 
-st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
-st.title("🤖 AI Chatbot with Google Gemma")
+# Page configuration
+st.set_page_config(
+    page_title="Free AI Chatbot",
+    page_icon="🤖",
+    layout="wide"
+)
 
-HF_TOKEN = st.secrets["HF_TOKEN"]
-# Try Google Gemma which might be more available
-MODEL_ID = "google/gemma-7b-it"
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_ID}"
-headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+# Hugging Face configuration
+@st.cache_data
+def get_huggingface_models():
+    return {
+        "Microsoft DialoGPT": "microsoft/DialoGPT-large",
+        "Google FLAN-T5": "google/flan-t5-xxl",
+        "Facebook Blenderbot": "facebook/blenderbot-400M-distill",
+        "GPT-2": "gpt2"
+    }
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
-
-if prompt := st.chat_input("Ask me anything..."):
-    st.chat_message("user").write(prompt)
+def query_huggingface(prompt: str, model: str, conversation_history: list = None):
+    API_URL = f"https://api-inference.huggingface.co/models/{model}"
     
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        message_placeholder.markdown("Generating response...")
+    # For models that need API token (free account)
+    headers = {
+        "Authorization": f"Bearer {st.secrets.get('HF_API_KEY', '')}",
+        "Content-Type": "application/json"
+    }
+    
+    # Format prompt based on model type
+    if "dialo" in model.lower():
+        # For conversational models
+        inputs = prompt
+    else:
+        # For text generation models
+        inputs = f"Conversation:\n{''.join([f'User: {msg["content"]}\nAI: ' if msg['role'] == 'user' else f'{msg["content"]}\n' for msg in conversation_history[-4:]])}User: {prompt}\nAI:"
+    
+    payload = {
+        "inputs": inputs,
+        "parameters": {
+            "max_new_tokens": 250,
+            "temperature": 0.7,
+            "do_sample": True
+        },
+        "options": {
+            "wait_for_model": True
+        }
+    }
+    
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
         
-        try:
-            # Simple prompt for Gemma
-            chat_history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
-            full_prompt = f"{chat_history}\nuser: {prompt}\nassistant:"
-            
-            payload = {
-                "inputs": full_prompt,
-                "parameters": {
-                    "max_new_tokens": 400,
-                    "temperature": 0.7,
-                    "top_p": 0.9
-                }
-            }
-            
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-            
-            if response.status_code == 200:
-                result = response.json()
-                if isinstance(result, list) and len(result) > 0:
-                    answer = result[0].get('generated_text', '').strip()
-                    
-                    # Extract assistant response
-                    if "assistant:" in answer:
-                        answer = answer.split("assistant:")[-1].strip()
-                    
-                    if answer:
-                        # Stream display
-                        display_text = ""
-                        for word in answer.split():
-                            display_text += word + " "
-                            message_placeholder.markdown(display_text + "▌")
-                            time.sleep(0.03)
-                        
-                        message_placeholder.markdown(display_text)
-                        st.session_state.messages.extend([
-                            {"role": "user", "content": prompt},
-                            {"role": "assistant", "content": display_text.strip()}
-                        ])
-                    else:
-                        message_placeholder.markdown("🔄 Model is loading. Please wait 30 seconds and try again.")
-                else:
-                    message_placeholder.markdown("❌ No response from model. The model might be loading.")
+        if response.status_code == 200:
+            result = response.json()
+            if isinstance(result, list) and len(result) > 0:
+                return result[0].get('generated_text', 'No response generated')
             else:
-                message_placeholder.markdown(f"❌ API Error {response.status_code}. Please try again.")
-                
-        except Exception as e:
-            message_placeholder.markdown(f"❌ Error: {str(e)}")
+                return str(result)
+        else:
+            return f"Model is loading... Please try again in 30 seconds. (Status: {response.status_code})"
+            
+    except Exception as e:
+        return f"Error: {str(e)}"
 
-st.caption("Using Google Gemma 7B")
+# Sidebar configuration
+with st.sidebar:
+    st.title("🤖 Chatbot Settings")
+    
+    models = get_huggingface_models()
+    selected_model = st.selectbox(
+        "Choose Model",
+        list(models.keys())
+    )
+    
+    st.markdown("---")
+    st.markdown("**Note:** Some models may take 20-30 seconds to load initially")
+    
+    if st.button("Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
+
+# Main chat interface
+st.title("💬 Free AI Chatbot")
+st.markdown("Powered by Hugging Face • 100% Free")
+
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Hello! I'm your AI assistant. How can I help you today?"}
+    ]
+
+# Display chat messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Chat input
+if prompt := st.chat_input("Type your message here..."):
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    
+    # Generate AI response
+    with st.chat_message("assistant"):
+        with st.spinner("🤔 Thinking..."):
+            model_id = models[selected_model]
+            response = query_huggingface(
+                prompt, 
+                model_id,
+                st.session_state.messages
+            )
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
