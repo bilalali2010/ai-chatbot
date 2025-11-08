@@ -1,127 +1,64 @@
 import streamlit as st
-from huggingface_hub import InferenceClient
+import requests
 import time
 
-# -------------------------
-# STREAMLIT APP CONFIG
-# -------------------------
-st.set_page_config(
-    page_title="My Hugging Face Chatbot", 
-    page_icon="🤖",
-    layout="wide"
-)
+st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
+st.title("🤖 AI Chatbot - Direct API")
 
-st.title("🤖 AI Chatbot")
-st.markdown("Chat with various AI models powered by Hugging Face")
+# Hugging Face API configuration
+HF_TOKEN = st.secrets["HF_TOKEN"]
+API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
+headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
-# -------------------------
-# SIDEBAR CONFIGURATION
-# -------------------------
-with st.sidebar:
-    st.header("⚙️ Configuration")
-    
-    # Use FREE and accessible models
-    MODEL_OPTIONS = {
-        "Mistral 7B Instruct": "mistralai/Mistral-7B-Instruct-v0.3",
-        "Zephyr 7B Beta": "HuggingFaceH4/zephyr-7b-beta",
-        "OpenHermes 2.5": "teknium/OpenHermes-2.5-Mistral-7B",
-        "Microsoft Phi-3 Mini": "microsoft/Phi-3-mini-4k-instruct"
+# Chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display messages
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
+
+def query_huggingface(prompt):
+    """Direct API call to Hugging Face"""
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 500,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "do_sample": True,
+            "return_full_text": False
+        }
     }
     
-    selected_model = st.selectbox(
-        "Choose Model:",
-        list(MODEL_OPTIONS.keys()),
-        index=0
-    )
-    MODEL_ID = MODEL_OPTIONS[selected_model]
+    response = requests.post(API_URL, headers=headers, json=payload)
+    return response.json()
+
+# User input
+if prompt := st.chat_input("What would you like to know?"):
+    st.chat_message("user").write(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
     
-    st.divider()
-    st.subheader("Model Parameters")
-    max_tokens = st.slider("Max Tokens", 50, 1000, 512, 50)
-    temperature = st.slider("Temperature", 0.1, 1.0, 0.7, 0.1)
-    
-    st.divider()
-    if st.button("🗑️ Clear Chat History", use_container_width=True):
-        st.session_state["messages"] = []
-        st.rerun()
-
-# -------------------------
-# HUGGING FACE CLIENT - FIXED VERSION
-# -------------------------
-@st.cache_resource
-def get_client():
-    try:
-        HF_TOKEN = st.secrets["HF_TOKEN"]
-        # Initialize without specific model for chat completion
-        return InferenceClient(token=HF_TOKEN)
-    except Exception as e:
-        st.error(f"❌ Failed to initialize client: {e}")
-        return None
-
-client = get_client()
-
-# -------------------------
-# CHAT MEMORY
-# -------------------------
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []  # FIXED: Added missing quote and bracket
-
-# Display previous messages
-for msg in st.session_state["messages"]:
-    avatar = "🤖" if msg["role"] == "assistant" else "👤"
-    with st.chat_message(msg["role"], avatar=avatar):
-        st.markdown(msg["content"])
-
-# -------------------------
-# USER INPUT & RESPONSE
-# -------------------------
-user_input = st.chat_input("Type your message here...")
-
-if user_input and user_input.strip():
-    # Add user message to history
-    st.session_state["messages"].append({"role": "user", "content": user_input.strip()})
-    
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(user_input)
-    
-    # Get AI response
-    if client is not None:
-        with st.chat_message("assistant", avatar="🤖"):
-            message_placeholder = st.empty()
-            message_placeholder.markdown("⏳ Thinking...")
-            
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
             try:
-                # Prepare messages for the model
-                messages = [{"role": m["role"], "content": m["content"]} 
-                           for m in st.session_state["messages"]]
+                # Format prompt for the model
+                conversation = "\n".join([
+                    f"<|user|>{msg['content']}</s>" if msg['role'] == 'user' 
+                    else f"<|assistant|>{msg['content']}</s>" 
+                    for msg in st.session_state.messages
+                ]) + "<|assistant|>"
                 
-                # Generate response with explicit model parameter
-                completion = client.chat_completion(
-                    model=MODEL_ID,  # Explicitly specify model here
-                    messages=messages,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    stream=False
-                )
+                response = query_huggingface(conversation)
                 
-                response = completion.choices[0].message["content"]
+                if isinstance(response, list) and len(response) > 0:
+                    answer = response[0]['generated_text']
+                else:
+                    answer = "Sorry, I couldn't generate a response."
                 
-                # Stream the response for better UX
-                full_response = ""
-                message_placeholder.markdown("🔄 Generating response...")
-                
-                for chunk in response.split():
-                    full_response += chunk + " "
-                    time.sleep(0.02)
-                    message_placeholder.markdown(full_response + "▌")
-                
-                message_placeholder.markdown(full_response)
-                
-                # Add AI response to history
-                st.session_state["messages"].append({"role": "assistant", "content": full_response.strip()})
+                st.write(answer)
+                st.session_state.messages.append({"role": "assistant", "content": answer})
                 
             except Exception as e:
-                error_msg = f"❌ Error: {str(e)}"
-                st.error(f"Detailed error: {e}")
-                message_placeholder.markdown(error_msg)
-                st.session_state["messages"].append({"role": "assistant", "content": error_msg})
+                error_msg = f"Error: {str(e)}"
+                st.error(error_msg)
