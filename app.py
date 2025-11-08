@@ -1,73 +1,43 @@
 import streamlit as st
-import requests
+from huggingface_hub import InferenceClient
 import time
 
 st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
-st.title("🤖 AI Chatbot")
+st.title("🤖 AI Chatbot - Working Version")
 
-# Configuration
-HF_TOKEN = st.secrets["HF_TOKEN"]
-MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_ID}"
-headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+# Initialize client with new endpoint
+@st.cache_resource
+def get_client():
+    HF_TOKEN = st.secrets["HF_TOKEN"]
+    return InferenceClient(
+        provider="huggingface",
+        token=HF_TOKEN
+    )
+
+client = get_client()
+
+# Model options
+MODEL_OPTIONS = {
+    "Mistral 7B": "mistralai/Mistral-7B-Instruct-v0.3",
+    "Llama 3.1 8B": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "Zephyr 7B": "HuggingFaceH4/zephyr-7b-beta"
+}
+
+with st.sidebar:
+    selected_model = st.selectbox("Model:", list(MODEL_OPTIONS.keys()))
+    MODEL_ID = MODEL_OPTIONS[selected_model]
+    
+    if st.button("Clear Chat"):
+        st.session_state.messages = []
+        st.rerun()
 
 # Chat history
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! I'm your AI assistant. How can I help you today?"}
-    ]
+    st.session_state.messages = []
 
 # Display messages
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
-
-def query_api(prompt):
-    """Improved API query with better error handling"""
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 500,
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "do_sample": True,
-            "return_full_text": False
-        },
-        "options": {
-            "wait_for_model": True,
-            "use_cache": False
-        }
-    }
-    
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if isinstance(result, list) and len(result) > 0:
-                if 'generated_text' in result[0]:
-                    return result[0]['generated_text']
-                else:
-                    return str(result[0])
-            elif isinstance(result, dict) and 'generated_text' in result:
-                return result['generated_text']
-            else:
-                return "I received an unexpected response format."
-        
-        elif response.status_code == 503:
-            return "🔄 The model is currently loading. Please wait 20-30 seconds and try again. This is normal for free Hugging Face models."
-        
-        elif response.status_code == 429:
-            return "⏳ Rate limit exceeded. Please wait a minute and try again."
-        
-        else:
-            return f"❌ API Error (Status {response.status_code}): {response.text}"
-            
-    except requests.exceptions.Timeout:
-        return "⏰ Request timeout. The model is taking too long to respond. Please try again."
-    except requests.exceptions.ConnectionError:
-        return "🔌 Connection error. Please check your internet connection."
-    except Exception as e:
-        return f"❌ Unexpected error: {str(e)}"
 
 # User input
 if prompt := st.chat_input("Ask me anything..."):
@@ -77,33 +47,43 @@ if prompt := st.chat_input("Ask me anything..."):
     
     # Generate response
     with st.chat_message("assistant"):
-        with st.spinner("🤔 Thinking..."):
-            # Create better prompt format for Mistral
+        message_placeholder = st.empty()
+        message_placeholder.markdown("⏳ Thinking...")
+        
+        try:
+            # Use text generation as fallback
             conversation = ""
             for msg in st.session_state.messages:
                 if msg["role"] == "user":
-                    conversation += f"<|user|>\n{msg['content']}</s>\n"
-                elif msg["role"] == "assistant":
-                    conversation += f"<|assistant|>\n{msg['content']}</s>\n"
+                    conversation += f"User: {msg['content']}\n\n"
+                else:
+                    conversation += f"Assistant: {msg['content']}\n\n"
             
-            # Add the current prompt for assistant to respond
-            conversation += "<|assistant|>\n"
+            conversation += "Assistant: "
             
-            response = query_api(conversation)
+            # Generate response
+            response = client.text_generation(
+                prompt=conversation,
+                model=MODEL_ID,
+                max_new_tokens=500,
+                temperature=0.7,
+                stream=False
+            )
             
-            # Clean up the response
-            if response.startswith("<|assistant|>"):
-                response = response.replace("<|assistant|>", "").strip()
+            # Stream response
+            full_response = response.strip()
+            display_text = ""
+            for word in full_response.split():
+                display_text += word + " "
+                message_placeholder.markdown(display_text + "▌")
+                time.sleep(0.05)
             
-            # Remove any closing tags
-            response = response.split('</s>')[0].strip()
+            message_placeholder.markdown(display_text)
+            st.session_state.messages.append({"role": "assistant", "content": display_text.strip()})
             
-            # If response is empty, provide a default
-            if not response or len(response) < 2:
-                response = "I'm here! How can I assist you today?"
-            
-            st.write(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            message_placeholder.markdown(error_msg)
+            st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
-st.divider()
-st.caption("Built with Streamlit and Hugging Face 🤗 | Model: Mistral 7B")
+st.caption("Using updated Hugging Face API")
