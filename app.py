@@ -10,14 +10,22 @@ API_KEY = os.getenv("HF_TOKEN")
 HF_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"  # Free model
 
 def ask_ai(prompt):
-    url = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
-    headers = {"Authorization": f"Bearer {API_KEY}"}
-    payload = {"inputs": prompt}
+    url = "https://router.huggingface.co/hf-inference"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": HF_MODEL,
+        "inputs": prompt
+    }
 
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 200:
         data = response.json()
-        return data[0]["generated_text"]
+        if isinstance(data, list) and "generated_text" in data[0]:
+            return data[0]["generated_text"]
+        return data
     return f"⚠️ API Error: {response.text}"
 
 if "history" not in st.session_state:
