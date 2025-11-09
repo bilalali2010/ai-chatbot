@@ -82,12 +82,11 @@ def display_chat():
                 unsafe_allow_html=True
             )
 
-# Display chat
-with chat_container:
-    display_chat()
+# Display existing chat messages
+display_chat()
 
 # -------------------------------
-# Input Form at the Bottom
+# Input Form at Bottom
 # -------------------------------
 with st.form(key="chat_form", clear_on_submit=True):
     user_input = st.text_input("Type your message here...", key="input")
@@ -97,5 +96,7 @@ with st.form(key="chat_form", clear_on_submit=True):
         output = ask_ai(user_input)
         st.session_state.history.append(("🧍 You", user_input))
         st.session_state.history.append(("🤖 AI", output))
-        # Rerun to show new message immediately
-        st.experimental_rerun()
+        
+        # Clear input and refresh chat without experimental_rerun
+        chat_container.empty()  # Clear container
+        display_chat()          # Redisplay updated chat
