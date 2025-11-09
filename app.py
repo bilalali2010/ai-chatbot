@@ -20,7 +20,6 @@ model_options = {
     "Llama 3 (if available)": "meta-llama/Llama-3-7b-instruct:free",
     "Gemma": "gemma/gpt-3:free"
 }
-
 selected_model = st.sidebar.selectbox("Choose AI Model:", list(model_options.keys()))
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -30,15 +29,13 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("💡 Tip: Use short prompts for faster responses.")
 
 # -------------------------------
-# Main App Header
+# Header
 # -------------------------------
 st.markdown(
-    """
-    <h1 style='text-align:center; color:#4B0082;'>🤖 Online AI Chatbot</h1>
-    <p style='text-align:center; font-size:16px; color:gray;'>Powered by OpenRouter Free Models</p>
-    """,
+    "<h1 style='text-align:center; color:#4B0082;'>🤖 Online AI Chatbot</h1>",
     unsafe_allow_html=True
 )
+st.markdown("<hr>", unsafe_allow_html=True)
 
 # -------------------------------
 # Initialize Session
@@ -47,7 +44,7 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # -------------------------------
-# Function to Call API
+# API Call Function
 # -------------------------------
 def ask_ai(message):
     headers = {
@@ -68,20 +65,11 @@ def ask_ai(message):
         return f"⚠️ API Error: {response.text}"
 
 # -------------------------------
-# User Input
-# -------------------------------
-user_input = st.text_input("Type your message here...", key="input")
-
-if st.button("Send") and user_input.strip():
-    output = ask_ai(user_input)
-    st.session_state.history.append(("🧍 You", user_input))
-    st.session_state.history.append(("🤖 AI", output))
-
-# -------------------------------
-# Display Chat
+# Chat Display Container
 # -------------------------------
 chat_container = st.container()
-with chat_container:
+
+def display_chat():
     for role, msg in st.session_state.history:
         if role.startswith("🧍"):
             st.markdown(
@@ -93,3 +81,21 @@ with chat_container:
                 f"<div style='background-color:#EAEAEA; padding:10px; border-radius:10px; margin:5px 0; width:fit-content;'>{msg}</div>",
                 unsafe_allow_html=True
             )
+
+# Display chat
+with chat_container:
+    display_chat()
+
+# -------------------------------
+# Input Form at the Bottom
+# -------------------------------
+with st.form(key="chat_form", clear_on_submit=True):
+    user_input = st.text_input("Type your message here...", key="input")
+    send_button = st.form_submit_button("Send")
+
+    if send_button and user_input.strip():
+        output = ask_ai(user_input)
+        st.session_state.history.append(("🧍 You", user_input))
+        st.session_state.history.append(("🤖 AI", output))
+        # Rerun to show new message immediately
+        st.experimental_rerun()
