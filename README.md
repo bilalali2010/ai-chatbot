@@ -1,19 +1,20 @@
-# Free AI Chatbot 🤖
+# 🦙 Ollama AI Chatbot (No Errors Version)
 
-A completely free AI chatbot deployed on Streamlit Cloud.
+A polished AI chatbot built with **Streamlit Cloud** and the **Ollama API**.  
+Runs powerful open-source models such as *Llama 3*, *Mistral*, *Gemma*, and *Phi-3*.
 
-## Features
-- Multiple AI model options
-- Beautiful chat interface
-- Completely free to use
-- No API keys required for basic models
+---
 
-## Live Demo
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](YOUR_STREAMLIT_APP_URL)
+## 🚀 Features
+- 100 % Free (Bring your Ollama API key)
+- Streamlit UI with chat bubbles
+- Persistent session history
+- Clean design & responsive layout
+- Works on Streamlit Cloud directly
 
-## Local Development
-```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
-pip install -r requirements.txt
-streamlit run app.py
+---
+
+## 🧠 Model Choice
+You can change the line:
+```python
+MODEL_NAME = "llama3"
