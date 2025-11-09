@@ -1,34 +1,34 @@
 import streamlit as st
 import requests
+import os
 
-st.set_page_config(page_title="AI Chatbot", page_icon="💬")
-st.title("🤖 Ollama Cloud Chatbot")
+st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
+st.title("🤖 Online AI Chatbot")
 
-API_KEY = "YOUR_OLLAMA_API_KEY"  # Replace this with your real key
+API_KEY = os.getenv("HF_TOKEN")
 
-def ask_ollama(prompt):
-    url = "https://api.ollama.com/v1/generate"
+HF_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"  # Free model
+
+def ask_ai(prompt):
+    url = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
     headers = {"Authorization": f"Bearer {API_KEY}"}
-    data = {"model": "llama3", "prompt": prompt}
+    payload = {"inputs": prompt}
 
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        if response.status_code == 200:
-            return response.json()["response"]
-        else:
-            return f"⚠️ Error: {response.text}"
-    except Exception as e:
-        return f"❌ Connection error: {e}"
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        data = response.json()
+        return data[0]["generated_text"]
+    return f"⚠️ API Error: {response.text}"
 
 if "history" not in st.session_state:
     st.session_state.history = []
 
-user_input = st.text_input("💬 You:", placeholder="Type your question...")
+user_input = st.text_input("You:", placeholder="Ask something...")
 
 if st.button("Send"):
     if user_input.strip():
         st.session_state.history.append(("🧍 You", user_input))
-        reply = ask_ollama(user_input)
+        reply = ask_ai(user_input)
         st.session_state.history.append(("🤖 AI", reply))
 
 for role, message in st.session_state.history:
