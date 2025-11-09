@@ -93,7 +93,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 # -----------------------------
 if st.button("🗑️ Clear Chat"):
     st.session_state.history = []
-    st.experimental_rerun()
+    st.rerun()
 
 # -----------------------------
 # ⚙️ FOOTER
