@@ -8,7 +8,7 @@ st.title("🤖 Online AI Chatbot")
 
 API_KEY = os.getenv("HF_TOKEN")
 
-HF_MODEL = "meta-llama/Llama-3.2-1B-Instruct"  # ✅ Works with HF router
+HF_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"  # ✅ Always available
 
 def ask_ai(prompt):
     url = "https://router.huggingface.co/hf-inference"
@@ -20,7 +20,7 @@ def ask_ai(prompt):
 
     payload = {
         "model": HF_MODEL,
-        "input": prompt  # ✅ New router uses "input" instead of "inputs"
+        "input": prompt
     }
 
     response = requests.post(url, headers=headers, json=payload)
@@ -28,11 +28,10 @@ def ask_ai(prompt):
     if response.status_code == 200:
         try:
             data = response.json()
-            if isinstance(data, dict) and "generated_text" in data:
+            if "generated_text" in data:
                 return data["generated_text"]
-            else:
-                return json.dumps(data, indent=2)
-        except Exception:
+            return json.dumps(data, indent=2)
+        except:
             return response.text
 
     return f"⚠️ API Error {response.status_code}: {response.text}"
