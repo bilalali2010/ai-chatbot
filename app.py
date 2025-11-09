@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import os
+import time
 
 # -------------------------------
 # Page Config
@@ -93,10 +94,22 @@ with st.form(key="chat_form", clear_on_submit=True):
     send_button = st.form_submit_button("Send")
 
     if send_button and user_input.strip():
-        output = ask_ai(user_input)
+        # Add user message first
         st.session_state.history.append(("🧍 You", user_input))
+        chat_container.empty()
+        display_chat()
+
+        # Show thinking indicator
+        typing_placeholder = chat_container.empty()
+        typing_placeholder.markdown(
+            "<div style='background-color:#EAEAEA; padding:10px; border-radius:10px; margin:5px 0; width:fit-content; font-style:italic; color:gray;'>🤖 AI is typing...</div>",
+            unsafe_allow_html=True
+        )
+
+        # Call AI API
+        output = ask_ai(user_input)
+
+        # Remove typing indicator and add AI message
         st.session_state.history.append(("🤖 AI", output))
-        
-        # Clear input and refresh chat without experimental_rerun
-        chat_container.empty()  # Clear container
-        display_chat()          # Redisplay updated chat
+        chat_container.empty()
+        display_chat()
