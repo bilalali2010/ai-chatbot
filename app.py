@@ -1,51 +1,45 @@
 import streamlit as st
 import requests
 import os
-import json
 
 st.set_page_config(page_title="AI Chatbot", page_icon="🤖")
 st.title("🤖 Online AI Chatbot")
 
-API_KEY = os.getenv("HF_TOKEN")
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+MODEL_NAME = "mistralai/mistral-7b-instruct:free"  # ✅ Free online model
 
-HF_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"  # ✅ Always available
+st.markdown("Chat using **Mistral-7B Free Model** 🌍")
 
-def ask_ai(prompt):
-    url = "https://router.huggingface.co/hf-inference"
+if "history" not in st.session_state:
+    st.session_state.history = []
 
+def ask_ai(message):
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
 
-    payload = {
-        "model": HF_MODEL,
-        "input": prompt
+    data = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "user", "content": message}
+        ]
     }
 
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(API_URL, headers=headers, json=data)
 
     if response.status_code == 200:
-        try:
-            data = response.json()
-            if "generated_text" in data:
-                return data["generated_text"]
-            return json.dumps(data, indent=2)
-        except:
-            return response.text
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        return f"⚠️ API Error: {response.text}"
 
-    return f"⚠️ API Error {response.status_code}: {response.text}"
-
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-user_input = st.text_input("You:", placeholder="Ask anything...")
+user_input = st.text_input("You:", "")
 
 if st.button("Send"):
-    if user_input.strip():
-        st.session_state.history.append(("🧍 You", user_input))
-        reply = ask_ai(user_input)
-        st.session_state.history.append(("🤖 AI", reply))
+    output = ask_ai(user_input)
+    st.session_state.history.append(("🧍 You", user_input))
+    st.session_state.history.append(("🤖 AI", output))
 
 for role, msg in st.session_state.history:
-    st.markdown(f"**{role}:** {msg}")
+    st.write(f"**{role}:** {msg}")
