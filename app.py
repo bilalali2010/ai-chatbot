@@ -35,7 +35,8 @@ API_URL = "https://api.ollama.cloud/v1/chat/completions"
 # -----------------------------
 # 🧠 MODEL SETTINGS
 # -----------------------------
-MODEL_NAME = "llama3"   # Change to mistral / phi3 / gemma / codellama / etc.
+MODEL_NAME = "llama3:8b"
+  # Change to mistral / phi3 / gemma / codellama / etc.
 
 # -----------------------------
 # 💾 SESSION MEMORY
