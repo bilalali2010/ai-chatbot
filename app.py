@@ -1,123 +1,132 @@
 import streamlit as st
 import requests
 import os
-import time
+import html
 
-# ---------------------------- #
-# 🧩 Basic Page Configuration
-# ---------------------------- #
-st.set_page_config(page_title="AI Chatbot | OpenRouter", page_icon="🤖", layout="wide")
+# -------------------------
+# Page config
+# -------------------------
+st.set_page_config(page_title="ChatGPT-Style AI Chat", page_icon="🤖", layout="wide")
 
+# -------------------------
+# Styles (ChatGPT-like)
+# -------------------------
 st.markdown("""
-    <style>
-        .chat-message {
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 8px;
-            line-height: 1.5;
-            font-size: 16px;
-        }
-        .user {
-            background-color: #DCF8C6;
-            text-align: right;
-        }
-        .bot {
-            background-color: #F1F0F0;
-            text-align: left;
-        }
-        .chat-container {
-            max-height: 75vh;
-            overflow-y: auto;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            background-color: #fff;
-        }
-        .input-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: white;
-            padding: 16px;
-            box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.1);
-        }
-        .stTextInput>div>div>input {
-            border-radius: 10px;
-            border: 1px solid #ccc;
-            padding: 10px;
-        }
-    </style>
+<style>
+.chat-wrapper {display:flex;gap:24px;align-items:flex-start;}
+.left-col {width:260px;min-width:220px;}
+.main-col {flex:1;display:flex;flex-direction:column;height:80vh;}
+#chatbox {background:#fff;border-radius:12px;padding:18px;
+box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow-y:auto;flex:1 1 auto;
+border:1px solid #e6e6e6;}
+.msg-row {display:flex;gap:12px;margin-bottom:12px;align-items:flex-end;}
+.msg-row.user {justify-content:flex-end;}
+.avatar {width:36px;height:36px;border-radius:50%;text-align:center;
+line-height:36px;font-size:18px;}
+.avatar.user {background:#DCF8C6;}
+.avatar.bot {background:#EAEAEA;}
+.bubble {max-width:78%;padding:12px 14px;border-radius:12px;
+font-size:14px;line-height:1.4;white-space:pre-wrap;
+box-shadow:0 1px 1px rgba(0,0,0,0.03);}
+.bubble.user {background:#DCF8C6;border-bottom-right-radius:6px;}
+.bubble.bot {background:#EAEAEA;border-bottom-left-radius:6px;}
+.input-area {margin-top:12px;display:flex;gap:8px;align-items:center;}
+.input-box {flex:1;}
+.send-btn {background:#4B0082;color:white;border:none;
+padding:8px 14px;border-radius:8px;}
+</style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 Professional AI Chatbot")
-st.caption("Powered by OpenRouter — using **LLaMA 3 (Free)** 🌍")
+# -------------------------
+# Sidebar
+# -------------------------
+st.sidebar.header("🤖 AI Chat Settings")
+st.sidebar.markdown("Model: **Gemma 7B Free (OpenRouter)**")
+st.sidebar.markdown("---")
+st.sidebar.markdown("Add your key in Streamlit Secrets:\n\n`OPENROUTER_API_KEY = sk-or-xxxxxx`")
 
-# ---------------------------- #
-# 🔑 API Configuration
-# ---------------------------- #
+# -------------------------
+# API setup
+# -------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "meta-llama/llama-3-8b-instruct:free"
+MODEL_NAME = "meta-llama/llama-4-maverick:free"
 
-# ---------------------------- #
-# 💬 Chat History
-# ---------------------------- #
-if "history" not in st.session_state:
+if not API_KEY:
+    st.sidebar.error("❌ OPENROUTER_API_KEY missing in Streamlit Secrets.")
+    st.stop()
+
+# -------------------------
+# Initialize / sanitize session state
+# -------------------------
+if "history" not in st.session_state or not isinstance(st.session_state.history, list):
     st.session_state.history = []
 
-# ---------------------------- #
-# 🚀 AI Function
-# ---------------------------- #
-def ask_ai(message):
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "model": MODEL_NAME,
-        "messages": [{"role": "user", "content": message}]
-    }
-
-    response = requests.post(API_URL, headers=headers, json=data)
-    if response.status_code == 200:
-        return response.json()["choices"][0]["message"]["content"]
+# Convert old string entries to dicts
+new_history = []
+for item in st.session_state.history:
+    if isinstance(item, dict) and "role" in item and "content" in item:
+        new_history.append(item)
     else:
-        return f"⚠️ API Error {response.status_code}: {response.text}"
+        # treat plain strings as user messages
+        new_history.append({"role": "user", "content": str(item)})
+st.session_state.history = new_history
 
-# ---------------------------- #
-# 🧠 Chat Display
-# ---------------------------- #
-chat_placeholder = st.container()
+# Ensure a system prompt exists at top
+if not st.session_state.history or st.session_state.history[0].get("role") != "system":
+    st.session_state.history.insert(0, {
+        "role": "system",
+        "content": "You are a smart and factual assistant."
+    })
 
-with chat_placeholder:
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-    for role, msg in st.session_state.history:
-        if role == "user":
-            st.markdown(f'<div class="chat-message user"><b>🧍 You:</b> {msg}</div>', unsafe_allow_html=True)
+# -------------------------
+# API call
+# -------------------------
+def ask_ai():
+    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    data = {"model": MODEL_NAME, "messages": st.session_state.history}
+    try:
+        r = requests.post(API_URL, headers=headers, json=data, timeout=120)
+        if r.status_code == 200:
+            return r.json()["choices"][0]["message"]["content"]
         else:
-            st.markdown(f'<div class="chat-message bot"><b>🤖 AI:</b> {msg}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+            return f"⚠️ API Error {r.status_code}: {r.text}"
+    except Exception as e:
+        return f"⚠️ Network error: {str(e)}"
 
-# ---------------------------- #
-# 💬 Input at Bottom
-# ---------------------------- #
-st.markdown('<div class="input-container">', unsafe_allow_html=True)
-user_input = st.text_input("Type your message...", "", key="user_input", label_visibility="collapsed")
-col1, col2 = st.columns([0.85, 0.15])
-with col2:
-    send = st.button("Send 🚀")
-st.markdown('</div>', unsafe_allow_html=True)
+# -------------------------
+# Display chat
+# -------------------------
+chat_box = st.empty()
 
-# ---------------------------- #
-# ⚡ Processing Logic
-# ---------------------------- #
-if send and user_input.strip() != "":
+def render_chat():
+    html_code = "<div id='chatbox'>"
+    for msg in st.session_state.history:
+        if not isinstance(msg, dict):
+            continue
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role == "system":
+            continue
+        role_class = "user" if role == "user" else "bot"
+        avatar = "👤" if role == "user" else "🤖"
+        html_code += f"<div class='msg-row {role_class}'><div class='avatar {role_class}'>{avatar}</div><div class='bubble {role_class}'>{html.escape(content)}</div></div>"
+    html_code += "</div><script>document.getElementById('chatbox').scrollTop=document.getElementById('chatbox').scrollHeight;</script>"
+    chat_box.markdown(html_code, unsafe_allow_html=True)
+
+render_chat()
+
+# -------------------------
+# Input section
+# -------------------------
+with st.form("chat_input", clear_on_submit=True):
+    user_msg = st.text_area("You:", placeholder="Type your message...", height=60)
+    send_btn = st.form_submit_button("Send")
+
+if send_btn and user_msg.strip():
+    st.session_state.history.append({"role": "user", "content": user_msg.strip()})
+    render_chat()
     with st.spinner("🤖 Thinking..."):
-        time.sleep(0.8)  # Just for smooth UX
-        ai_reply = ask_ai(user_input)
-
-    st.session_state.history.append(("user", user_input))
-    st.session_state.history.append(("bot", ai_reply))
-    st.rerun()
+        reply = ask_ai()
+    st.session_state.history.append({"role": "assistant", "content": reply})
+    render_chat()
