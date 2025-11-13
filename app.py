@@ -50,8 +50,7 @@ st.sidebar.markdown("Add your key in Streamlit Secrets:\n\n`OPENROUTER_API_KEY =
 # -------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "google/gemma-7b-it:free"
-
+MODEL_NAME = "meta-llama/llama-4-maverick:free"
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing in Streamlit Secrets.")
     st.stop()
