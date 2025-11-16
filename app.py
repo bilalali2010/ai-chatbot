@@ -44,7 +44,7 @@ st.markdown("""
 # Sidebar
 # -------------------------
 st.sidebar.header("🤖 AI Chat Settings")
-st.sidebar.markdown("Model: **OpenRouter Auto Free**")
+st.sidebar.markdown("Model: **Sherlock Think Alpha**")
 st.sidebar.markdown("---")
 st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets as `OPENROUTER_API_KEY`")
 
@@ -54,19 +54,19 @@ st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets a
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Use universal free model picker
-MODEL_NAME = "openrouter/auto:free"
+# Use Sherlock Think Alpha
+MODEL_NAME = "openrouter/sherlock-think-alpha"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
     st.stop()
 
 # -------------------------
-# Session history (chat)
+# Session history
 # -------------------------
 if "history" not in st.session_state:
     st.session_state.history = [
-        {"role": "system", "content": "You are a helpful AI assistant."}
+        {"role": "system", "content": "You are a smart and factual assistant."}
     ]
 
 chat_box = st.empty()
@@ -109,9 +109,7 @@ def ask_ai():
         r = requests.post(API_URL, headers=headers, json=data, timeout=180)
         if r.status_code == 200:
             reply = r.json()["choices"][0]["message"]["content"].strip()
-            if not reply:
-                return "⚠️ Sorry, I could not generate a response. Please try again."
-            return reply
+            return reply or "⚠️ Sorry, I could not generate a response."
         else:
             return f"⚠️ API Error {r.status_code}: {r.text}"
     except Exception as e:
