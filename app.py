@@ -34,6 +34,9 @@ if "history" not in st.session_state:
         {"role": "system", "content": "You are a smart and factual assistant."}
     ]
 
+# Placeholder for chat messages
+chat_placeholder = st.empty()
+
 # -------------------------
 # API call function
 # -------------------------
@@ -54,22 +57,25 @@ def ask_ai():
 # Display chat
 # -------------------------
 def render_chat():
-    st.write("")  # spacer
-    for msg in st.session_state.history:
-        if msg["role"] == "system":
-            continue
-        if msg["role"] == "user":
-            with st.container():
+    with chat_placeholder.container():
+        for msg in st.session_state.history:
+            if msg["role"] == "system":
+                continue
+            if msg["role"] == "user":
                 st.markdown(f"👤 **You:** {msg['content']}")
-        elif msg["role"] == "assistant":
-            with st.container():
+            elif msg["role"] == "assistant":
                 st.markdown(f"🤖 **AI:** {msg['content']}")
 
 # -------------------------
-# Input form
+# Render chat first
+# -------------------------
+render_chat()
+
+# -------------------------
+# Input form at the bottom
 # -------------------------
 with st.form("chat_input", clear_on_submit=True):
-    user_msg = st.text_area("You:", placeholder="Type your message here...", height=60)
+    user_msg = st.text_area("Type your message here...", height=60)
     send_btn = st.form_submit_button("Send")
 
 if send_btn and user_msg.strip():
