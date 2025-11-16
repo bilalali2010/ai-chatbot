@@ -54,7 +54,7 @@ st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets a
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Use a free model that is more likely to be alive
+# Free working model
 MODEL_NAME = "mistralai/mistral-7b-instruct:free"
 
 if not API_KEY:
@@ -79,10 +79,9 @@ def render_chat():
     for msg in st.session_state.history:
         if msg["role"] == "system":
             continue
-        role = msg["role"]
-        role_class = "user" if role == "user" else "bot"
-        avatar = "👤" if role == "user" else "🤖"
-        content = html.escape(msg["content"])
+        role_class = "user" if msg["role"] == "user" else "bot"
+        avatar = "👤" if msg["role"] == "user" else "🤖"
+        content = html.escape(msg["content"]) if msg["content"].strip() else "⚠️ Sorry, no response generated."
         html_code += f"""
         <div class='msg-row {role_class}'>
           <div class='avatar {role_class}'>{avatar}</div>
@@ -109,7 +108,10 @@ def ask_ai():
     try:
         r = requests.post(API_URL, headers=headers, json=data, timeout=120)
         if r.status_code == 200:
-            return r.json()["choices"][0]["message"]["content"]
+            reply = r.json()["choices"][0]["message"]["content"].strip()
+            if not reply:
+                return "⚠️ Sorry, I could not generate a response. Please try again."
+            return reply
         else:
             return f"⚠️ API Error {r.status_code}: {r.text}"
     except Exception as e:
@@ -123,8 +125,11 @@ with st.form("chat_input", clear_on_submit=True):
     send_btn = st.form_submit_button("Send")
 
 if send_btn and user_msg.strip():
+    # Add user message
     st.session_state.history.append({"role": "user", "content": user_msg.strip()})
     render_chat()
+    
+    # Get AI reply
     with st.spinner("🤖 Thinking..."):
         reply = ask_ai()
     st.session_state.history.append({"role": "assistant", "content": reply})
