@@ -44,7 +44,7 @@ st.markdown("""
 # Sidebar
 # -------------------------
 st.sidebar.header("🤖 AI Chat Settings")
-st.sidebar.markdown("Model: **Mistral 7B Instruct (Free)**")
+st.sidebar.markdown("Model: **OpenRouter Auto Free**")
 st.sidebar.markdown("---")
 st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets as `OPENROUTER_API_KEY`")
 
@@ -54,8 +54,8 @@ st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets a
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Free working model
-MODEL_NAME = "mistralai/mistral-7b-instruct:free"
+# Use universal free model picker
+MODEL_NAME = "openrouter/auto:free"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
@@ -106,7 +106,7 @@ def ask_ai():
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     data = {"model": MODEL_NAME, "messages": st.session_state.history}
     try:
-        r = requests.post(API_URL, headers=headers, json=data, timeout=120)
+        r = requests.post(API_URL, headers=headers, json=data, timeout=180)
         if r.status_code == 200:
             reply = r.json()["choices"][0]["message"]["content"].strip()
             if not reply:
@@ -125,11 +125,9 @@ with st.form("chat_input", clear_on_submit=True):
     send_btn = st.form_submit_button("Send")
 
 if send_btn and user_msg.strip():
-    # Add user message
     st.session_state.history.append({"role": "user", "content": user_msg.strip()})
     render_chat()
     
-    # Get AI reply
     with st.spinner("🤖 Thinking..."):
         reply = ask_ai()
     st.session_state.history.append({"role": "assistant", "content": reply})
