@@ -44,9 +44,9 @@ st.markdown("""
 # Sidebar
 # -------------------------
 st.sidebar.header("🤖 AI Chat Settings")
-st.sidebar.markdown("Model: **Google Gemma 7B Free**")
+st.sidebar.markdown("Model: **Mistral 7B Instruct (Free)**")
 st.sidebar.markdown("---")
-st.sidebar.markdown("Add your key in Streamlit Secrets:\n\n`OPENROUTER_API_KEY = sk-or-xxxxxx`")
+st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets as `OPENROUTER_API_KEY`")
 
 # -------------------------
 # API setup
@@ -54,15 +54,15 @@ st.sidebar.markdown("Add your key in Streamlit Secrets:\n\n`OPENROUTER_API_KEY =
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# ✅ Working free model
-MODEL_NAME = "google/gemma-7b-it:free"
+# Use a free model that is more likely to be alive
+MODEL_NAME = "mistralai/mistral-7b-instruct:free"
 
 if not API_KEY:
-    st.sidebar.error("❌ OPENROUTER_API_KEY missing in Streamlit Secrets.")
+    st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
     st.stop()
 
 # -------------------------
-# Session history
+# Session history (chat)
 # -------------------------
 if "history" not in st.session_state:
     st.session_state.history = [
@@ -72,7 +72,7 @@ if "history" not in st.session_state:
 chat_box = st.empty()
 
 # -------------------------
-# Render chat nicely
+# Render chat
 # -------------------------
 def render_chat():
     html_code = "<div id='chatbox'>"
@@ -83,11 +83,10 @@ def render_chat():
         role_class = "user" if role == "user" else "bot"
         avatar = "👤" if role == "user" else "🤖"
         content = html.escape(msg["content"])
-
         html_code += f"""
         <div class='msg-row {role_class}'>
-            <div class='avatar {role_class}'>{avatar}</div>
-            <div class='bubble {role_class}'>{content}</div>
+          <div class='avatar {role_class}'>{avatar}</div>
+          <div class='bubble {role_class}'>{content}</div>
         </div>
         """
     html_code += """
@@ -102,18 +101,11 @@ def render_chat():
 render_chat()
 
 # -------------------------
-# API Call
+# API call function
 # -------------------------
 def ask_ai():
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": MODEL_NAME,
-        "messages": st.session_state.history
-    }
-
+    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    data = {"model": MODEL_NAME, "messages": st.session_state.history}
     try:
         r = requests.post(API_URL, headers=headers, json=data, timeout=120)
         if r.status_code == 200:
@@ -121,23 +113,19 @@ def ask_ai():
         else:
             return f"⚠️ API Error {r.status_code}: {r.text}"
     except Exception as e:
-        return f"⚠️ Network error: {str(e)}"
+        return f"⚠️ Network error: {e}"
 
 # -------------------------
-# Input box
+# Input form
 # -------------------------
 with st.form("chat_input", clear_on_submit=True):
-    user_msg = st.text_area("You:", placeholder="Type your message...", height=60)
+    user_msg = st.text_area("You:", placeholder="Type your message here...", height=60)
     send_btn = st.form_submit_button("Send")
 
 if send_btn and user_msg.strip():
-    # Add user message
     st.session_state.history.append({"role": "user", "content": user_msg.strip()})
     render_chat()
-
     with st.spinner("🤖 Thinking..."):
         reply = ask_ai()
-
-    # Add bot reply
     st.session_state.history.append({"role": "assistant", "content": reply})
     render_chat()
