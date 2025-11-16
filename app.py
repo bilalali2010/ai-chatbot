@@ -55,7 +55,7 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Use Sherlock Think Alpha
-MODEL_NAME = "openrouter/sherlock-think-alpha"
+MODEL_NAME = "openrouter/sherlock-dash-alpha"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
