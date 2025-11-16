@@ -53,9 +53,7 @@ st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets a
 # -------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-
-# Use Sherlock Think Alpha
-MODEL_NAME = "openrouter/sherlock-dash-alpha"
+MODEL_NAME = "openrouter/sherlock-think-alpha"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
@@ -81,7 +79,8 @@ def render_chat():
             continue
         role_class = "user" if msg["role"] == "user" else "bot"
         avatar = "👤" if msg["role"] == "user" else "🤖"
-        content = html.escape(msg["content"]) if msg["content"].strip() else "⚠️ Sorry, no response generated."
+        # Use html.unescape to show normal text instead of escaped entities
+        content = html.unescape(msg["content"]).strip() or "⚠️ Sorry, no response generated."
         html_code += f"""
         <div class='msg-row {role_class}'>
           <div class='avatar {role_class}'>{avatar}</div>
