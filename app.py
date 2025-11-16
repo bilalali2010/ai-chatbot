@@ -44,7 +44,7 @@ st.markdown("""
 # Sidebar
 # -------------------------
 st.sidebar.header("🤖 AI Chat Settings")
-st.sidebar.markdown("Model: **Llama 3.1 (Free)**")
+st.sidebar.markdown("Model: **Google Gemma 7B Free**")
 st.sidebar.markdown("---")
 st.sidebar.markdown("Add your key in Streamlit Secrets:\n\n`OPENROUTER_API_KEY = sk-or-xxxxxx`")
 
@@ -54,8 +54,8 @@ st.sidebar.markdown("Add your key in Streamlit Secrets:\n\n`OPENROUTER_API_KEY =
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# ⭐ BEST free model (stable, fast, reliable)
-MODEL_NAME = "meta-llama/llama-3.1-8b-instruct:free"
+# ✅ Working free model
+MODEL_NAME = "google/gemma-7b-it:free"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing in Streamlit Secrets.")
