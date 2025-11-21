@@ -13,7 +13,7 @@ st.set_page_config(page_title="ChatGPT-Style AI Chat", page_icon="🤖", layout=
 st.sidebar.header("🤖 AI Chat Settings")
 st.sidebar.markdown("Model: **xAI: Grok 4.1 (free)**")
 st.sidebar.markdown("---")
-st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets as `OPENROUTER_API_KEY`")
+
 
 # -------------------------
 # API setup
