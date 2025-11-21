@@ -11,7 +11,7 @@ st.set_page_config(page_title="ChatGPT-Style AI Chat", page_icon="🤖", layout=
 # Sidebar
 # -------------------------
 st.sidebar.header("🤖 AI Chat Settings")
-st.sidebar.markdown("Model: **Sherlock Think Alpha**")
+st.sidebar.markdown("Model: **xAI: Grok 4.1 (free)**")
 st.sidebar.markdown("---")
 st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets as `OPENROUTER_API_KEY`")
 
@@ -20,7 +20,7 @@ st.sidebar.markdown("Make sure your OpenRouter key is set in Streamlit secrets a
 # -------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "openrouter/sherlock-think-alpha"
+MODEL_NAME = "x-ai/grok-4.1-fast:free"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
