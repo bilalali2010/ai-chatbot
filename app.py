@@ -11,7 +11,7 @@ st.set_page_config(page_title="ChatGPT-Style AI Chat", page_icon="🤖", layout=
 # Sidebar
 # -------------------------
 st.sidebar.header("🤖 AI Chat Settings")
-st.sidebar.markdown("Model: **xAI: Grok 4.1 (free)**")
+st.sidebar.markdown("Model: **xAI: Grok 4.1**")
 st.sidebar.markdown("---")
 
 
