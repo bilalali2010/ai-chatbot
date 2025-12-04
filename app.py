@@ -15,7 +15,7 @@ st.set_page_config(
 # Sidebar
 # -------------------------
 st.sidebar.header("🤖 AI Chat Settings")
-st.sidebar.markdown("Model: **xAI: Grok 4.1**")
+st.sidebar.markdown("Model: **arcee-ai/trinity-mini**")
 st.sidebar.markdown("---")
 
 # -------------------------
@@ -23,7 +23,7 @@ st.sidebar.markdown("---")
 # -------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "x-ai/grok-4.1-fast:free"
+MODEL_NAME = arcee-ai/trinity-mini:free"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
