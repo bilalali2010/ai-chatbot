@@ -23,7 +23,7 @@ st.sidebar.markdown("---")
 # -------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = arcee-ai/trinity-mini:free"
+MODEL_NAME = "arcee-ai/trinity-mini:free"
 
 if not API_KEY:
     st.sidebar.error("❌ OPENROUTER_API_KEY missing.")
